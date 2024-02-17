@@ -2,7 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import {  client } from "./redis";
+import { client } from "./redis";
 
 require("dotenv").config();
 
@@ -29,11 +29,22 @@ let onlineUsers: string[] = [];
 io.on("connection", async (socket) => {
   onlineUsers.push(socket.id);
   console.log("a user connected");
-  await client.set(`${socket.id}`, JSON.stringify({ id: socket.id }));
-  socket.to(socket.id).emit("objects", []);
 
-  socket.on("objects:modified", (data) => {
-    socket.emit("objects:modified", data);
+  socket.on("objects",async()=>{
+    const objects = await client.hGet("room:1", "objects");
+    socket.emit("objects", JSON.parse(objects||"[]"));
+  })
+
+
+  socket.on("objects:modified", async (objects) => {
+    onlineUsers.forEach((usrId) => {
+      if (usrId != socket.id) {
+        socket.to(usrId).emit("objects:modified", objects);
+      }
+    });
+    await client.hSet("room:1", {
+      objects: JSON.stringify(objects),
+    });
   });
 
   socket.on("mouse:move", async (data: position) => {
@@ -60,7 +71,10 @@ io.on("connection", async (socket) => {
         await client.hSet("room:1", { presense: JSON.stringify(presense) });
         onlineUsers.forEach((usrId) => {
           if (usrId != socket.id) {
-            socket.to(usrId).emit("mouse:move", presense.filter(pre=>pre.id!==usrId));
+            socket.to(usrId).emit(
+              "mouse:move",
+              presense.filter((pre) => pre.id !== usrId)
+            );
           }
         });
       }
