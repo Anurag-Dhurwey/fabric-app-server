@@ -32,14 +32,14 @@ const {privateKey}=JSON.parse(private_key!)
 // };
 
 export const initialize_firebase = () => {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: project_id,
-      clientEmail: client_email,
-      privateKey
-    }),
-    databaseURL: databaseUrl,
-  });
+  // admin.initializeApp({
+  //   credential: admin.credential.cert({
+  //     projectId: project_id,
+  //     clientEmail: client_email,
+  //     privateKey
+  //   }),
+  //   databaseURL: databaseUrl,
+  // });
 };
 
 export { admin };
