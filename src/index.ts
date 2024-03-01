@@ -24,7 +24,8 @@ initialize_firebase();
 // app.use('/',routes)
 
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
+  // res.sendFile(__dirname + "/index.html");
+  res.send('working server')
 });
 
 let onlineUsers: string[] = [];
