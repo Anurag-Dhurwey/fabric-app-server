@@ -38,6 +38,11 @@ io.on("connection", async (socket) => {
     socket.to(roomId).emit("room:joined", roomId);
     console.log("joined" + " to " + roomId);
   });
+  socket.on("room:leave", async (roomId: string) => {
+    socket.leave(roomId);
+    socket.to(roomId).emit("room:left", roomId);
+    console.log("left" + " " + roomId);
+  });
 
   socket.on("objects", async (roomId: string) => {
     const objects = await client.hGet(`room:${roomId}`, "objects");
@@ -48,7 +53,6 @@ io.on("connection", async (socket) => {
   socket.on(
     "objects:modified",
     async ({ objects, roomId }: { objects: any; roomId: string }) => {
-      console.log("objects:modified");
       socket.to(roomId).emit("objects:modified", objects);
       await client.hSet(`room:${roomId}`, {
         objects: JSON.stringify(objects),
@@ -89,10 +93,7 @@ io.on("connection", async (socket) => {
           await client.hSet(`room:${roomId}`, {
             presense: JSON.stringify(presense),
           });
-          socket.to(roomId).emit(
-            "mouse:move",
-            presense.filter((pre) => pre.id !== socket.id)
-          );
+          socket.to(roomId).emit("mouse:move", presense);
         }
       } catch (error: any) {
         console.log(error.message);
