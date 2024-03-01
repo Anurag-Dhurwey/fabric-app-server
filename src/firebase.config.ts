@@ -1,4 +1,4 @@
-import admin from "firebase-admin";
+const admin = require("firebase-admin");
 require("dotenv").config();
 const {
   type,
@@ -15,7 +15,7 @@ const {
   databaseUrl,
 } = process.env;
 
-const {privateKey}=JSON.parse(private_key!)
+const { privateKey } = JSON.parse(private_key!);
 
 // const serviceAccount = {
 //   type,

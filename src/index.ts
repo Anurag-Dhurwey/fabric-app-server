@@ -3,8 +3,8 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { client } from "./redis.config";
-import { routes } from "./routes/routes";
-import { initialize_firebase } from "./firebase.config";
+// import { routes } from "./routes/routes";
+// import { initialize_firebase } from "./firebase.config";
 
 require("dotenv").config();
 
@@ -20,12 +20,12 @@ const port = 4000;
 
 app.use(cors({ origin: "*" }));
 
-initialize_firebase();
+// initialize_firebase();
 // app.use('/',routes)
 
 app.get("/", (req, res) => {
-  // res.sendFile(__dirname + "/index.html");
-  res.send('working server')
+  res.sendFile(__dirname + "/index.html");
+  // res.send('working server')
 });
 
 let onlineUsers: string[] = [];
@@ -113,3 +113,6 @@ server.listen(port, () => {
 });
 
 type position = { x: number; y: number };
+
+
+module.exports = app
