@@ -3,9 +3,8 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { client } from "./redis.config";
-// import { routes } from "./routes/routes";
-// import { initialize_firebase } from "./firebase.config";
-
+import { routes } from "./routes/routes";
+import { db } from "./firebase.config";
 require("dotenv").config();
 
 const app = express();
@@ -15,27 +14,28 @@ client.connect().catch((err) => {
 });
 client.on("error", (err) => console.log("Redis Client Error", err));
 
-const io = new Server(server, { cors: { origin: "*" } });
-const port = 4000;
+const io = new Server(server, { cors: { origin: ["http://localhost:4200"] } });
+const port = 3000;
 
 app.use(cors({ origin: "*" }));
 
-// initialize_firebase();
-// app.use('/',routes)
+app.use("/", routes);
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
   // res.send('working server')
 });
 
-let onlineUsers: string[] = [];
+type UserMap = Record<string, string[]>;
+let onlineUsers: UserMap = {};
 
 io.on("connection", async (socket) => {
-  onlineUsers.push(socket.id);
+  onlineUsers[socket.id] = [];
   console.log("a user connected");
 
   socket.on("room:join", async (roomId: string) => {
     socket.join(roomId);
+    onlineUsers[socket.id].push(roomId);
     socket.to(roomId).emit("room:joined", roomId);
     console.log("joined" + " to " + roomId);
   });
@@ -46,7 +46,16 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("objects", async (roomId: string) => {
-    const objects = await client.hGet(`room:${roomId}`, "objects");
+    let objects = await client.hGet(`room:${roomId}`, "objects");
+    if (!objects) {
+      const doc = (await db.collection("projects").doc(roomId).get()).data()
+        ?.objects;
+      objects = doc;
+      await client.hSet(`room:${roomId}`, {
+        objects: doc || "",
+      });
+    }
+
     socket.emit("objects", JSON.parse(objects || "[]"));
     console.log("objects");
   });
@@ -102,8 +111,16 @@ io.on("connection", async (socket) => {
     }
   );
 
-  socket.on("disconnect", () => {
-    onlineUsers = onlineUsers.filter((ursId) => ursId != socket.id);
+  socket.on("disconnect", async () => {
+    onlineUsers[socket.id].forEach(async (docId) => {
+      const objects = await client.hGet(`room:${docId}`, "objects");
+      await db
+        .collection("projects")
+        .doc(docId)
+        .update({ objects: objects || "" });
+      await client.del(`room:${docId}`);
+    });
+    delete onlineUsers[socket.id];
     console.log("user disconnected");
   });
 });
@@ -114,5 +131,4 @@ server.listen(port, () => {
 
 type position = { x: number; y: number };
 
-
-module.exports = app
+module.exports = app;
