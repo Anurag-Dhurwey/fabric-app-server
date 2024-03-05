@@ -50,10 +50,12 @@ io.on("connection", async (socket) => {
     if (!objects) {
       const doc = (await db.collection("projects").doc(roomId).get()).data()
         ?.objects;
-      objects = doc;
-      await client.hSet(`room:${roomId}`, {
-        objects: doc || "",
-      });
+      if (typeof doc === "string") {
+        objects = doc;
+        await client.hSet(`room:${roomId}`, {
+          objects: doc,
+        });
+      }
     }
 
     socket.emit("objects", JSON.parse(objects || "[]"));
@@ -63,10 +65,10 @@ io.on("connection", async (socket) => {
   socket.on(
     "objects:modified",
     async ({ objects, roomId }: { objects: any; roomId: string }) => {
-      socket.to(roomId).emit("objects:modified", objects);
       await client.hSet(`room:${roomId}`, {
         objects: JSON.stringify(objects),
       });
+      socket.to(roomId).emit("objects:modified", objects);
     }
   );
 
