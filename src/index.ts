@@ -116,11 +116,12 @@ io.on("connection", async (socket) => {
   socket.on("disconnect", async () => {
     onlineUsers[socket.id].forEach(async (docId) => {
       const objects = await client.hGet(`room:${docId}`, "objects");
-      await db
-        .collection("projects")
+      db.collection("projects")
         .doc(docId)
-        .update({ objects: objects || "" });
-      await client.del(`room:${docId}`);
+        .update({ objects: objects || "[]" })
+        .then(() => {
+          client.del(`room:${docId}`);
+        });
     });
     delete onlineUsers[socket.id];
     console.log("user disconnected");
