@@ -34,11 +34,13 @@ io.on("connection", async (socket) => {
   console.log("a user connected");
 
   socket.on("room:join", async (roomId: string) => {
+    if (!roomId) return;
     socket.join(roomId);
     onlineUsers[socket.id].push(roomId);
     socket.to(roomId).emit("room:joined", roomId);
     console.log("joined" + " to " + roomId);
   });
+
   socket.on("room:leave", async (roomId: string) => {
     socket.leave(roomId);
     socket.to(roomId).emit("room:left", roomId);
@@ -46,6 +48,7 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("objects", async (roomId: string) => {
+    if (!roomId) return;
     let objects = await client.hGet(`room:${roomId}`, "objects");
     if (!objects) {
       const doc = (await db.collection("projects").doc(roomId).get()).data()
@@ -65,6 +68,7 @@ io.on("connection", async (socket) => {
   socket.on(
     "objects:modified",
     async ({ objects, roomId }: { objects: any; roomId: string }) => {
+      if (!objects || !roomId) return;
       await client.hSet(`room:${roomId}`, {
         objects: JSON.stringify(objects),
       });
@@ -76,6 +80,7 @@ io.on("connection", async (socket) => {
     "mouse:move",
     async (data: { position: position; roomId: string }) => {
       const { position, roomId } = data;
+      if (!position || !roomId) return;
       try {
         const presenseStr = await client.hGet(`room:${roomId}`, "presense");
         if (!presenseStr) {
@@ -116,12 +121,12 @@ io.on("connection", async (socket) => {
   socket.on("disconnect", async () => {
     onlineUsers[socket.id].forEach(async (docId) => {
       const objects = await client.hGet(`room:${docId}`, "objects");
-      db.collection("projects")
+      if (!objects) return;
+      await db
+        .collection("projects")
         .doc(docId)
-        .update({ objects: objects || "[]" })
-        .then(() => {
-          client.del(`room:${docId}`);
-        });
+        .update({ objects: objects || "[]" });
+      await client.del(`room:${docId}`);
     });
     delete onlineUsers[socket.id];
     console.log("user disconnected");
